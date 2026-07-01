@@ -7,10 +7,12 @@ def encode_queries(queries, processor, model):
     """Extrcat text features from queries texts.
 
     Arg:
-    queries: list of queries in the .js file
+        queries: list of queries in the .js file
+        processor: CLIP processor
+        model: CLIP model
 
     Return:
-    text_z: list of (normalized) text features
+        text_z: list of (normalized) text features
     """
     # tokenize the input queries
     text_t = processor(text=queries, return_tensors="pt", padding=True)
@@ -37,10 +39,10 @@ def get_annotations(annotations_path):
     """Extract queries and groundtruth annotations from .js file.
 
     Arg:
-    annotations_path: path to the .js file
+        annotations_path: path to the .js file
 
     Return:
-    annotations: list of queries and groundtruth annotations
+        annotations: list of queries and groundtruth annotations
     """
     with open(annotations_path, "r") as f:
         annotations = json.load(f)
@@ -63,15 +65,17 @@ def get_predictions(modified_target, k, data_path, image_features = None):
     """Find the predictions based on cosine similarity.
 
     Arg:
-    modified_target: tensor of the target image modified with the query
-    k: the cutoff for top-K evaluation (e.g., 1, 5, 10)
-    data_path: path where images features are contained
+        modified_target: tensor of the target image modified with the query
+        k: the cutoff for top-K evaluation (e.g., 1, 5, 10)
+        data_path: path where images features are contained
+        image_features: images features already extracted from the frozen data
 
     Return:
-    predictions: dictionary of the first k predictions
+        predictions: dictionary of the first k predictions
     """
     images_sim_cos = {}
 
+    # if the images features are not extracted yet 
     if image_features is None:
         for pt_file in data_path.glob("*.pt"):
             tensor = torch.load(pt_file).to("cuda")
@@ -91,10 +95,20 @@ def get_predictions(modified_target, k, data_path, image_features = None):
     return predictions
 
 def get_frozen_image_features(data_path):
+    """Extract and store in a dictionary frozen image features.
+
+    Args:
+        data_path: directory that contains the frozen image features (files .pt)
+
+    Returns: 
+        a dictionary containing the image features (the keys are the original
+        celeb a images indexes)
+    """
     images_features = {}
   
     for pt_file in data_path.glob("*.pt"):
-        tensor = torch.load(pt_file, map_location="cpu") # for the moemnt to the CPU
+        # for the moment to the CPU
+        tensor = torch.load(pt_file, map_location="cpu") 
         idx = int(pt_file.name.replace(".pt", ""))
         images_features[idx] = tensor
 
@@ -143,10 +157,10 @@ def get_unsigned_queries(annotations):
     """Creates a list of unsigned queries (ex: +Smiling becomes Smiling)
 
     Arg:
-    annotations: list of queries and groundtruth annotations
+        annotations: list of queries and groundtruth annotations
 
     Return:
-    queries_unsigned: list of unsigned queries
+        queries_unsigned: list of unsigned queries
     """
     queries = [a["query"] for a in annotations]
 
@@ -168,13 +182,13 @@ def modify_target(visual_path, target_idx, texts, query):
     """Apply query to the target image (latent space arithmetic)
 
     Arg:
-    visual_path: path where images features are contained
-    target_idx: index of the target image in celeba
-    texts: dictionary of unsigned queries and text features
-    query: query to be applied
+        visual_path: path where images features are contained
+        target_idx: index of the target image in celeba
+        texts: dictionary of unsigned queries and text features
+        query: query to be applied
 
     Return:
-    target_tensor: tensor of the target image modified with the query
+        target_tensor: tensor of the target image modified with the query
     """
     # extract visual features of the specific target
     filename = f"{target_idx}.pt"
@@ -204,6 +218,11 @@ def test_query(query_id, multiple_k, directory, annotations, texts, n_images = N
         directory: path where images features are contained
         annotations: contains the queries and groundtruth
         texts: dictionary of unsigned queries and text features
+        n_images: number of reference images to evaluate
+        images_features: frozen images features
+
+    Returns:
+        the predictions of the first reference image
     """
     # get all reference images for the query passed in input
     target_images_ids = list(annotations[query_id]["ground_truth"].keys())
@@ -287,16 +306,12 @@ def text_arithmetic(texts, query):
     """Apply query to the target image (latent space arithmetic)
 
     Arg:
-    visual_path: path where images features are contained
-    target_idx: index of the target image in celeba
-    texts: dictionary of unsigned queries and text features
-    query: query to be applied
+        texts: dictionary of unsigned queries and text features
+        query: query to be applied
 
     Return:
-    target_tensor: tensor of the target image modified with the query
+        target_tensor: tensor of the target image modified with the query
     """
-
-
     # perform naive arithmetic operations in the latent space
     multiple_q = [q.strip() for q in query.split(",")]
     first_q = multiple_q[0]
@@ -360,10 +375,18 @@ def test_query_slerp(
 
     Arg:
         query_id: index of the query in the .js file
-        k: list containing the cutoff for top-K evaluation (e.g., 1, 5, 10)
-        n_images: number of reference images to test the model
+        multiple_k: list containing the cutoff for top-K evaluation (e.g., 1, 5, 10)
         directory: path where images features are contained
+        alpha: hyperparameter of slerp
         annotations: contains the queries and groundtruth
+        processor: CLIP processor
+        model: CLIP model
+        n_images: number of reference images to evaluate
+        texts: dictionary of unsigned queries and text features
+        images_features: frozen images features
+
+    Returns:
+        the predictions of the first reference image
     """
     target_images_ids = list(annotations[query_id]["ground_truth"].keys())
 
