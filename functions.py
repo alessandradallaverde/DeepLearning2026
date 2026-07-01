@@ -59,7 +59,7 @@ def cosine_similarity(image_query_z, image_z):
     """
     return F.cosine_similarity(image_query_z.unsqueeze(1), image_z.unsqueeze(0), dim=-1).cpu()
 
-def get_predictions(modified_target, k, data_path):
+def get_predictions(modified_target, k, data_path, image_features = None):
     """Find the predictions based on cosine similarity.
 
     Arg:
@@ -71,19 +71,34 @@ def get_predictions(modified_target, k, data_path):
     predictions: dictionary of the first k predictions
     """
     images_sim_cos = {}
-    for pt_file in data_path.glob("*.pt"):
-        tensor = torch.load(pt_file).to("cuda")
-        idx = int(pt_file.name.replace(".pt", ""))
-        images_sim_cos[idx] = cosine_similarity(modified_target, tensor)
+
+    if image_features is None:
+        for pt_file in data_path.glob("*.pt"):
+            tensor = torch.load(pt_file).to("cuda")
+            idx = int(pt_file.name.replace(".pt", ""))
+            images_sim_cos[idx] = cosine_similarity(modified_target, tensor)
+    else:
+        for idx, tensor in image_features.items():
+            images_sim_cos[idx] = cosine_similarity(modified_target, tensor)
 
     predictions = sorted(
-    images_sim_cos.items(),
-    key=lambda x: x[1],
-    reverse=True
+      images_sim_cos.items(),
+      key=lambda x: x[1],
+      reverse=True
     )
     predictions = dict(predictions[:k])
 
     return predictions
+
+def get_frozen_image_features(data_path):
+    images_features = {}
+  
+    for pt_file in data_path.glob("*.pt"):
+        tensor = torch.load(pt_file, map_location="cpu") # for the moemnt to the CPU
+        idx = int(pt_file.name.replace(".pt", ""))
+        images_features[idx] = tensor
+
+    return images_features
 
 def evaluate_retrieval(
     retrieved_indices: list[int],
@@ -179,16 +194,16 @@ def modify_target(visual_path, target_idx, texts, query):
 
     return target_tensor
 
-def test_query(query_id, multiple_k, directory, annotations, texts, n_images = None):
+def test_query(query_id, multiple_k, directory, annotations, texts, n_images = None, image_features = None):
     """Test the model with a specific query.
 
     Arg:
-    query_id: index of the query in the .js file
-    multiple_k: list containing the cutoffs for top-K evaluation (e.g., 1, 5, 10)
-    n_images: number of reference images to test the model
-    directory: path where images features are contained
-    annotations: contains the queries and groundtruth
-    texts: dictionary of unsigned queries and text features
+        query_id: index of the query in the .js file
+        multiple_k: list containing the cutoffs for top-K evaluation (e.g., 1, 5, 10)
+        n_images: number of reference images to test the model
+        directory: path where images features are contained
+        annotations: contains the queries and groundtruth
+        texts: dictionary of unsigned queries and text features
     """
     # get all reference images for the query passed in input
     target_images_ids = list(annotations[query_id]["ground_truth"].keys())
@@ -203,7 +218,7 @@ def test_query(query_id, multiple_k, directory, annotations, texts, n_images = N
 
     # for every reference image
     for id in target_images_ids[:n_images]:
-    # fusion mechanism
+        # fusion mechanism
         modified_target = modify_target(
             directory,
             id,
@@ -211,7 +226,7 @@ def test_query(query_id, multiple_k, directory, annotations, texts, n_images = N
             annotations[query_id]["query"]
         )
         # predictions
-        predictions = get_predictions(modified_target, max(multiple_k), directory)
+        predictions = get_predictions(modified_target, max(multiple_k), directory, image_features)
         # store first prediction (necessary to analyze plots)
         if id == target_images_ids[0]:
             first_pred = predictions
@@ -329,7 +344,18 @@ def slerp(visual_path, target_idx, w, alpha):
 
     return v_target
 
-def test_query_slerp(query_id, multiple_k, directory, alpha, annotations, processor, model, n_images = None, texts = None):
+def test_query_slerp(
+    query_id,
+    multiple_k,
+    directory,
+    alpha,
+    annotations,
+    processor,
+    model,
+    n_images = None,
+    texts = None,
+    image_features = None
+):
     """Test the model with a specific query.
 
     Arg:
@@ -358,8 +384,9 @@ def test_query_slerp(query_id, multiple_k, directory, alpha, annotations, proces
             query_t_features = text_arithmetic(texts, annotations[query_id]["query"])
 
         v_target = slerp(directory, id, query_t_features, alpha)
-        predictions = get_predictions(v_target, max(multiple_k), directory)
+        predictions = get_predictions(v_target, max(multiple_k), directory, image_features)
 
+        # store first prediction (necessary to analyze plots)
         if id == target_images_ids[0]:
             first_pred = predictions
 
