@@ -17,7 +17,8 @@ annotations_path = Path(
 )
 annotations = get_annotations(annotations_path)
 image_features = get_frozen_image_features(directory)
-image_features = image_features.to("cuda")
+for k in image_features:
+	image_features[k] = image_features[k].to("cuda")
 
 # BASELINE SETUP
 # get queries
@@ -27,7 +28,7 @@ text_features = encode_queries(queries_unsigned, processor, model)
 # store mapping between text features and unsigned queries
 texts = dict(zip(queries_unsigned, text_features))
 
-for query_id in range(1, len(annotations)):
+for query_id in range(len(annotations)):
   print(f"Baseline results ({annotations[query_id]['query']}):")
   _ = test_query(query_id, [1, 5, 10], directory, annotations, texts, n_images=10, image_features=image_features)
   print(f"Slerp results ({annotations[query_id]['query']}):")
