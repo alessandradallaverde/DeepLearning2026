@@ -1,9 +1,8 @@
-
 from pathlib import Path
 from torchvision.datasets import CelebA
 from transformers import CLIPModel, CLIPProcessor
 
-from DeepLearning2026.functions import *
+from functions import *
 
 
 celeba = CelebA(root=Path("data/celeba"), split="test", download=False)
@@ -30,6 +29,6 @@ for query_id in range(1, len(annotations)):
   print(f"Baseline results ({annotations[query_id]['query']}):")
   _ = test_query(query_id, [1, 5, 10], directory, annotations, texts, None)
   print(f"Slerp results ({annotations[query_id]['query']}):")
-  _ = test_query_slerp(query_id, [1, 5, 10], directory, 0.85, annotations, None)
+  _ = test_query_slerp(query_id, [1, 5, 10], directory, 0.85, annotations, processor, model, n_images=None, texts=None)
   print(f"Slerp arithmetic results ({annotations[query_id]['query']}):")
-  _ = test_query_slerp(query_id, [1, 5, 10], directory, 0.85, annotations, None, texts)
+  _ = test_query_slerp(query_id, [1, 5, 10], directory, 0.85, annotations,processor, model, n_images=None, texts=texts)

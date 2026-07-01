@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn.functional as F
 import json
 
-def encode_queries(queries):
+def encode_queries(queries, processor, model):
     """Extrcat text features from queries texts.
 
     Arg:
@@ -329,7 +329,7 @@ def slerp(visual_path, target_idx, w, alpha):
 
     return v_target
 
-def test_query_slerp(query_id, multiple_k, directory, alpha, annotations, n_images = None, texts = None):
+def test_query_slerp(query_id, multiple_k, directory, alpha, annotations, processor, model, n_images = None, texts = None):
     """Test the model with a specific query.
 
     Arg:
@@ -353,7 +353,7 @@ def test_query_slerp(query_id, multiple_k, directory, alpha, annotations, n_imag
         # modify query before computing the text features with CLIP text encoder
         if texts is None:
             modified_query = compose_query(annotations[query_id]["query"])
-            query_t_features = encode_queries(modified_query)
+            query_t_features = encode_queries(modified_query, processor, model)
         else: # latent space arithmetic
             query_t_features = text_arithmetic(texts, annotations[query_id]["query"])
 
