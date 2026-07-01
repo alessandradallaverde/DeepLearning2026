@@ -1,12 +1,7 @@
-from google.colab import drive
 import torch
-from pathlib import Path
-from torchvision.datasets import CelebA
 import numpy as np
 import torch.nn.functional as F
 import json
-import matplotlib.pyplot as plt
-from transformers import CLIPModel, CLIPProcessor
 
 def encode_queries(queries):
     """Extrcat text features from queries texts.

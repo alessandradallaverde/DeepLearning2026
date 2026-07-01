@@ -22,7 +22,7 @@ annotations = get_annotations(annotations_path)
 # get queries
 queries_unsigned = get_unsigned_queries(annotations)
 # obtain text features of the queries
-text_features = encode_queries(queries_unsigned)
+text_features = encode_queries(queries_unsigned, processor, model)
 # store mapping between text features and unsigned queries
 texts = dict(zip(queries_unsigned, text_features))
 
