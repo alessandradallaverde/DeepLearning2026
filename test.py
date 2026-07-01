@@ -16,6 +16,8 @@ annotations_path = Path(
     "data/celeba_evaluation.json"
 )
 annotations = get_annotations(annotations_path)
+image_features = get_frozen_image_features(directory)
+image_features = image_features.to("cuda")
 
 # BASELINE SETUP
 # get queries
@@ -27,8 +29,8 @@ texts = dict(zip(queries_unsigned, text_features))
 
 for query_id in range(1, len(annotations)):
   print(f"Baseline results ({annotations[query_id]['query']}):")
-  _ = test_query(query_id, [1, 5, 10], directory, annotations, texts, None)
+  _ = test_query(query_id, [1, 5, 10], directory, annotations, texts, n_images=10, image_features=image_features)
   print(f"Slerp results ({annotations[query_id]['query']}):")
-  _ = test_query_slerp(query_id, [1, 5, 10], directory, 0.85, annotations, processor, model, n_images=None, texts=None)
+  _ = test_query_slerp(query_id, [1, 5, 10], directory, 0.85, annotations, processor, model, n_images=10, texts=None, image_features=image_features)
   print(f"Slerp arithmetic results ({annotations[query_id]['query']}):")
-  _ = test_query_slerp(query_id, [1, 5, 10], directory, 0.85, annotations,processor, model, n_images=None, texts=texts)
+  _ = test_query_slerp(query_id, [1, 5, 10], directory, 0.85, annotations,processor, model, n_images=10, texts=texts, image_features=image_features)
